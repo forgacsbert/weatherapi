@@ -1,31 +1,52 @@
-# Docker
-# Build a Docker image
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+# Build a Docker image and push it to docker hub
+# Deploy using Terraform to Azure Container Instances
 
 trigger:
-- main
+  - main
 
 resources:
-- repo: self
+  - repo: self
 
 variables:
-  tag: '$(Build.BuildId)'
+  tag: "$(Build.BuildId)"
 
 stages:
-- stage: Build
-  displayName: Build image
-  jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: Docker@2
-      inputs:
-        containerRegistry: 'Docker Hub'
-        repository: 'forgacsbert/weatherapi'
-        command: 'buildAndPush'
-        Dockerfile: '**/Dockerfile'
-        tags: |
-          $(tag)
-    
+  - stage: Build
+    displayName: Build image
+    jobs:
+      - job: Build
+        displayName: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            inputs:
+              containerRegistry: "Docker Hub"
+              repository: "forgacsbert/weatherapi"
+              command: "buildAndPush"
+              Dockerfile: "**/Dockerfile"
+              tags: |
+                $(tag)
+  - stage: Provision
+    displayName: "Terraforming on Azure..."
+    dependsOn: Build
+    jobs:
+      - job: Provision
+        displayName: "Provisioning container instance"
+        pool:
+          vmImage: "ubuntu-latest"
+        variables:
+          - group: "TerraformEnvVars"
+        steps:
+          - script: |
+              set -e
+
+              terraform init -input=false
+              terraform apply -input=false -auto-approve
+            name: "RunTerraform"
+            displayName: "Run Terraform"
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)

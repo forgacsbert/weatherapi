@@ -7,6 +7,15 @@ terraform {
   }
 }
 
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "tf_rg_blobstore"
+    storage_account_name = "tfstorageaccountfb"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
+}
+
 provider "azurerm" {
   features {}
 }
